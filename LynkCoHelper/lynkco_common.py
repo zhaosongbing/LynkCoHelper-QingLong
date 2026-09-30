@@ -27,7 +27,25 @@ import uuid
 
 import requests.exceptions
 
-ENV_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "env.json")
+
+def _resolve_env_file() -> str:
+    """
+    确定 env.json 的路径，优先级：
+        1. 环境变量 LYNKCO_ENV_FILE（显式指定，青龙面板推荐指向 /ql/data 这类不会被拉库覆盖的目录）；
+        2. 检测到青龙面板环境（/ql/data 目录存在）时，自动改用 /ql/data/lynkco_env.json，
+           避免 `ql repo` 拉库更新脚本时把回写的最新 token / refreshToken 冲掉；
+        3. 默认与模块同目录（本地运行行为不变）。
+    """
+    override = os.environ.get("LYNKCO_ENV_FILE", "").strip()
+    if override:
+        return override
+    if os.path.isdir("/ql/data"):
+        return os.path.join("/ql/data", "lynkco_env.json")
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "env.json")
+
+
+# 青龙面板下默认落在 /ql/data/lynkco_env.json，本地仍为模块同级 env.json。
+ENV_FILE = _resolve_env_file()
 
 # 网络请求默认超时（秒），GitHub Actions runner 到领克服务器延迟较高，
 # 15 秒不够。可通过环境变量覆盖。
@@ -236,8 +254,16 @@ def load_env_data() -> dict:
     }
 
 
+def _env_write_disabled() -> bool:
+    """环境变量 LYNKCO_DISABLE_ENV_WRITE=1 时禁止回写 env.json（多账号场景必须关闭，
+    否则多个账号的 token 会互相覆盖同一个 user 段）。"""
+    return os.environ.get("LYNKCO_DISABLE_ENV_WRITE", "").strip().lower() in ("1", "true", "yes", "on")
+
+
 def save_env_fields(fields: dict, section: str = "user") -> None:
     """把 fields 写入/更新到 env.json 的指定子对象（默认 "user"），文件或子对象不存在时自动创建。"""
+    if _env_write_disabled():
+        return
     try:
         raw = load_env_data() if not os.path.exists(ENV_FILE) else json.load(open(ENV_FILE, "r", encoding="utf-8"))
         if not isinstance(raw, dict):

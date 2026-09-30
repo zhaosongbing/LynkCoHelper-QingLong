@@ -16,6 +16,8 @@
 | `lynkco_share.py` | 分享任务逻辑（可选功能） |
 | `lynkco_notify.py` | Bark 推送工具 |
 | `lynkco_daily_tasks.py` | 顶层入口：编排签到 + 分享 + 积分查询并推送结果 |
+| `lynkco_qinglong.py` | 青龙面板专用入口：依赖自检 + 多账号 + 双通道通知 + 退出码 |
+| `qinglong_notify.py` | 青龙面板自带通知渠道适配（sendNotify.py / notify.js） |
 
 原理、签名算法、接口协议等技术细节见 `docs/` 目录，此处只介绍如何使用。
 
@@ -109,6 +111,35 @@ python3 lynkco_daily_tasks.py    # 签到 + 分享 + 积分查询 + Bark 推送
 | `LYNKCO_BARK_KEY` | Bark 推送的 Key，未配置则跳过推送（也可写入 `env.json` 的 `notify.barkKey`） |
 | `LYNKCO_ENERGY_DELAY` | 签到/分享后查询积分前的等待秒数，默认 5 |
 | `LYNKCO_BARK_ICON` | Bark 推送使用的图标 URL，默认使用领克官方图标 |
+
+## 部署到青龙面板（Qinglong Panel）
+
+完整说明见 [`docs/青龙面板部署指南.md`](docs/青龙面板部署指南.md)，这里只给最短路径：
+
+1. 拉库（青龙 → 定时任务 / 订阅管理）：
+
+   ```bash
+   ql repo https://github.com/zhaosongbing/LynkCoHelper.git "LynkCoHelper" "docs|previews|tools" "requirements.txt" "main"
+   ```
+
+   不方便拉库时可用单文件版：`qinglong/lynkco_qinglong_single.py`
+   （由 `tools/build_qinglong_single.py` 生成），粘贴到面板「新建脚本」或用 `ql raw` 添加。
+
+2. 配置环境变量（**关闭「自动拆分」**）：
+
+   | 变量 | 必需 | 说明 |
+   | --- | --- | --- |
+   | `LYNKCO_APP_SECRETS` | ✅ | 单行 JSON：`{"nativeAppKey":"","nativeAppSecret":"","nativeAppCode":"","loginAppCode":"","glDevId":""}` |
+   | `LYNKCO_REFRESH_TOKEN` | ✅（推荐） | 约 30 天有效，可自动续期 |
+   | `LYNKCO_DEVICE_ID` | ✅（配合上） | 与 refreshToken 同一次抓包 |
+   | `LYNKCO_TOKEN` | 备选 | 静态 token，约 30 分钟有效 |
+   | `LYNKCO_BARK_KEY` | 可选 | Bark 推送 Key |
+   | `LYNKCO_QL_NOTIFY` | 可选 | 默认 1，走青龙自带通知渠道；0 关闭 |
+   | `LYNKCO_DO_SHARE` | 可选 | 默认 1，0 只签到不分享 |
+
+3. 新建定时任务：命令 `task LynkCoHelper/LynkCoHelper/lynkco_qinglong.py`，定时规则 `8 8 * * *`。
+
+   多账号：`LYNKCO_REFRESH_TOKEN` / `LYNKCO_DEVICE_ID` 用换行或 `&` 分隔多组即可，脚本会逐个执行并汇总。
 
 ## 部署到 GitHub Actions 定时执行
 

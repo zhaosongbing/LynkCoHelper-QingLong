@@ -2,7 +2,7 @@
 # 郑重告知：本程序源码仅供学习研究使用，使用该程序造成的一切后果与程序作者无关。本项目并非拿来即用，有技术门槛！！！
 ---
 
-支持领克 App 每日签到、分享任务、积分查询与 Bark 推送，可通过 GitHub Actions 定时运行。
+支持领克 App 每日签到、分享任务、积分查询与 Bark 推送，可通过 GitHub Actions 或青龙面板（Qinglong Panel）定时运行。
 
 ## 功能状态
 
@@ -14,6 +14,7 @@
 - [x] token 自动续期（refreshToken 双方案兜底）+ 本地过期时间缓存，避免调试时频繁续期
 - [x] 短信验证码登录全流程（含本地极验滑块辅助页面）
 - [x] GitHub Actions 定时执行，环境变量 / `env.json` 双配置方式，密钥零硬编码
+- [x] 青龙面板（Qinglong Panel）定时执行：专用入口 + 依赖自检 + 多账号 + 双通道通知，见 [`LynkCoHelper/docs/青龙面板部署指南.md`](LynkCoHelper/docs/青龙面板部署指南.md)
 
 ### 暂未完成 / 已知限制
 

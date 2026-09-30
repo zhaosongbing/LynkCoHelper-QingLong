@@ -421,11 +421,20 @@ def _cached_token_valid(user_data: dict) -> str:
     return ""
 
 
+def _token_cache_disabled() -> bool:
+    """环境变量 LYNKCO_SKIP_TOKEN_CACHE=1 时跳过 env.json 中的缓存 token。
+
+    多账号场景必须开启：env.json 的 user 段只有一份，多账号共用会串号，
+    因此每个账号都应强制走 refreshToken 续期。
+    """
+    return os.environ.get("LYNKCO_SKIP_TOKEN_CACHE", "").strip().lower() in ("1", "true", "yes", "on")
+
+
 def load_token() -> str:
     """
     token 获取优先级：
         1. env.json 中缓存的 token 若未过期（留 60 秒安全余量），直接复用，调试时避免
-           频繁调用续期接口；
+           频繁调用续期接口（LYNKCO_SKIP_TOKEN_CACHE=1 时跳过本步，多账号必需）；
         2. 环境变量 LYNKCO_REFRESH_TOKEN + LYNKCO_DEVICE_ID，或 env.json
            user.refreshToken + user.deviceId —— 自动向网关换取最新 token（成功后
            会把 token/expireAt 写回 env.json 供下次复用）；
@@ -433,9 +442,10 @@ def load_token() -> str:
     """
     user_data = load_env_data().get("user", {})
 
-    cached = _cached_token_valid(user_data)
-    if cached:
-        return cached
+    if not _token_cache_disabled():
+        cached = _cached_token_valid(user_data)
+        if cached:
+            return cached
 
     refresh_token_value = os.environ.get("LYNKCO_REFRESH_TOKEN") or user_data.get("refreshToken")
     device_id = os.environ.get("LYNKCO_DEVICE_ID") or user_data.get("deviceId")
