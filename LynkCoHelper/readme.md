@@ -119,8 +119,10 @@ python3 lynkco_daily_tasks.py    # 签到 + 分享 + 积分查询 + Bark 推送
 1. 拉库（青龙 → 定时任务 / 订阅管理）：
 
    ```bash
-   ql repo https://github.com/zhaosongbing/LynkCoHelper.git "LynkCoHelper" "docs|previews|tools" "requirements.txt" "main"
+   ql repo https://github.com/zhaosongbing/LynkCoHelper-QingLong.git "LynkCoHelper" "docs|previews|tools" "requirements.txt" "main"
    ```
+
+   > 青龙版只存在于 `LynkCoHelper-QingLong` 仓库，原仓库 `LynkCoHelper` 没有 `lynkco_qinglong.py`。
 
    不方便拉库时可用单文件版：`qinglong/lynkco_qinglong_single.py`
    （由 `tools/build_qinglong_single.py` 生成），粘贴到面板「新建脚本」或用 `ql raw` 添加。
