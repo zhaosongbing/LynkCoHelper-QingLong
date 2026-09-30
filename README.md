@@ -15,6 +15,7 @@
 - [x] 短信验证码登录全流程（含本地极验滑块辅助页面）
 - [x] GitHub Actions 定时执行，环境变量 / `env.json` 双配置方式，密钥零硬编码
 - [x] 青龙面板（Qinglong Panel）定时执行：专用入口 + 依赖自检 + 多账号 + 双通道通知，见 [`LynkCoHelper/docs/青龙面板部署指南.md`](LynkCoHelper/docs/青龙面板部署指南.md)
+- [x] 拉库时自动创建青龙定时任务：声明式清单 + OpenAPI 幂等注册（去重/校正/清理 + cron 与间隔校验 + 重试与状态持久化），见 [`LynkCoHelper/docs/青龙自动创建定时任务.md`](LynkCoHelper/docs/青龙自动创建定时任务.md)
 
 ### 暂未完成 / 已知限制
 

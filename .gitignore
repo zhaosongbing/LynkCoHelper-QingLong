@@ -125,6 +125,10 @@ dmypy.json
 # 会话相关参数，无需保留）
 /LynkCoHelper/geetest_helper.html
 
+# lynkco_ql_tasks.py 本地运行时生成的同步状态文件（记录任务名 -> 青龙任务 id，
+# 青龙里默认落在 /ql/data，本地跑才会出现在仓库目录）
+/LynkCoHelper/lynkco_ql_tasks_state.json
+
 work/
 
 .codebuddy/

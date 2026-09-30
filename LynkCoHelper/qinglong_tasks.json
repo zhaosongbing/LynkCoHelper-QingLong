@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "defaults": {
+    "labels": ["LynkCo"],
+    "timezone": "Asia/Shanghai",
+    "enabled": true
+  },
+  "tasks": [
+    {
+      "name": "领克·每日签到分享",
+      "command": "task {repo}/LynkCoHelper/lynkco_qinglong.py",
+      "script": "{repo}/LynkCoHelper/lynkco_qinglong.py",
+      "schedule": "8 8 * * *",
+      "description": "每日签到 + 分享 + 积分查询，结果走 Bark / 青龙通知渠道推送",
+      "enabled": true
+    },
+    {
+      "name": "领克·任务注册同步",
+      "command": "task {repo}/LynkCoHelper/lynkco_ql_tasks.py sync",
+      "script": "{repo}/LynkCoHelper/lynkco_ql_tasks.py",
+      "schedule": "17 3 * * 1",
+      "description": "每周一凌晨按本清单校正一次任务名/定时规则，与订阅「执行后」命令等价，双保险",
+      "enabled": true
+    },
+    {
+      "name": "领克·面板连接自检（示例·默认停用）",
+      "command": "task {repo}/LynkCoHelper/lynkco_ql_tasks.py status",
+      "script": "{repo}/LynkCoHelper/lynkco_ql_tasks.py",
+      "interval": "6h",
+      "description": "演示固定间隔写法（折算为 0 */6 * * *）与 enabled=false（注册但不立即生效）",
+      "enabled": false
+    }
+  ]
+}

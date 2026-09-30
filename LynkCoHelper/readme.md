@@ -18,6 +18,8 @@
 | `lynkco_daily_tasks.py` | 顶层入口：编排签到 + 分享 + 积分查询并推送结果 |
 | `lynkco_qinglong.py` | 青龙面板专用入口：依赖自检 + 多账号 + 双通道通知 + 退出码 |
 | `qinglong_notify.py` | 青龙面板自带通知渠道适配（sendNotify.py / notify.js） |
+| `lynkco_ql_tasks.py` + `qinglong_tasks.json` | 拉库后按清单自动在青龙面板建定时任务：OpenAPI 幂等同步 + cron/间隔校验 + 去重 + 清理 |
+| `tests/` | `lynkco_ql_tasks.py` 的单元测试（内含模拟面板，无需真实青龙即可跑） |
 
 原理、签名算法、接口协议等技术细节见 `docs/` 目录，此处只介绍如何使用。
 
@@ -139,9 +141,25 @@ python3 lynkco_daily_tasks.py    # 签到 + 分享 + 积分查询 + Bark 推送
    | `LYNKCO_QL_NOTIFY` | 可选 | 默认 1，走青龙自带通知渠道；0 关闭 |
    | `LYNKCO_DO_SHARE` | 可选 | 默认 1，0 只签到不分享 |
 
-3. 新建定时任务：命令 `task LynkCoHelper/LynkCoHelper/lynkco_qinglong.py`，定时规则 `8 8 * * *`。
+3. 新建定时任务：命令 `task LynkCoHelper-QingLong/LynkCoHelper/lynkco_qinglong.py`，定时规则 `8 8 * * *`。
 
    多账号：`LYNKCO_REFRESH_TOKEN` / `LYNKCO_DEVICE_ID` 用换行或 `&` 分隔多组即可，脚本会逐个执行并汇总。
+
+### 拉库时自动创建定时任务（免手工建任务）
+
+不想手动建任务的话，用 `lynkco_ql_tasks.py sync` 按仓库里的清单 `qinglong_tasks.json`
+幂等注册到面板（任务名/规则/启用状态都由清单决定，重复拉库不会建重，青龙自建的任务也会被校正）：
+
+```bash
+# 订阅「执行后」填这一条，拉完库就自动注册
+task LynkCoHelper-QingLong/LynkCoHelper/lynkco_ql_tasks.py sync
+
+# 或手动跑一次；先自检凭据与清单
+python3 /ql/data/scripts/LynkCoHelper-QingLong/LynkCoHelper/lynkco_ql_tasks.py status
+```
+
+需要青龙 OpenAPI 凭据：环境变量 `QL_TOKEN`（或 `QL_CLIENT_ID` + `QL_CLIENT_SECRET`，
+应用需勾选 `crons` 权限）。详见 [`docs/青龙自动创建定时任务.md`](docs/青龙自动创建定时任务.md)。
 
 ## 部署到 GitHub Actions 定时执行
 
