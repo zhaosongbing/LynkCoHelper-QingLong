@@ -18,11 +18,16 @@
        以及各模块自带的 `if __name__ == "__main__":` 入口块；
     3. 末尾把当前模块注册为各子模块名并起别名，兼容 `import lynkco_common`
        与 `lynkco_common.NATIVE_APP_KEY` 两种引用方式；
-    4. 统一保留一个 `if __name__ == "__main__":` 入口，调用青龙入口的 main()。
+    4. 统一保留一个 `if __name__ == "__main__":` 入口，调用青龙入口的 main()；
+    5. 剥掉各模块自带的定时任务声明行（注释形式的 cron / name 标签）。面板拉库时扫脚本
+       头部认这两行就会自动建任务；单文件版默认不带，否则整仓拉库时会与多模块版
+       lynkco_qinglong.py 各建一条、同一份签到跑两遍。只想用单文件版、又想让面板自动
+       建任务的场景，用 --cron / --name 显式打开。
 """
 import argparse
 import ast
 import os
+import re
 import sys
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -58,6 +63,11 @@ HEADER = '''# -*- coding: utf-8 -*-
 多账号：LYNKCO_REFRESH_TOKEN / LYNKCO_DEVICE_ID / LYNKCO_TOKEN 支持用换行或 & 分隔。
 
 青龙定时任务命令示例：task lynkco_qinglong_single.py     定时规则：8 8 * * *
+
+本文件默认不写定时任务声明：整仓拉库时多模块版 lynkco_qinglong.py 已经声明过，
+再声明一次会建出两条任务、同一份签到跑两遍。只用这一个文件、又想让面板拉库自动建任务的，
+在本文件头部（第 3 行起）加两行注释声明即可：第 1 行写 cron 标签加定时规则
+（规则写法 8 8 * * *，即每天 08:08），第 2 行写 name 标签加任务名（领克·每日签到分享）。
 """
 import sys
 '''
@@ -143,12 +153,42 @@ def _banner(name: str) -> str:
     return f"\n\n# {'=' * 74}\n# ↓↓↓ 以下内容来自 {name}.py\n# {'=' * 74}\n\n"
 
 
-def build(output_path: str) -> str:
-    chunks = [HEADER]
+# 面板（青龙与呆呆面板等分支）拉库时扫描脚本头部，按下面两条正则认定时规则与任务名，
+# 认出来就自动建定时任务。单文件版默认不声明，避免与多模块版重复建任务。
+_CRON_DECL_RE = re.compile(r"^\s*#\s*@?cron\b\s*[:：]?\s*\S.*$")
+_NAME_DECL_RE = re.compile(r"^\s*#\s*@?name\b\s*[:：]?\s*\S.*$")
+
+
+def _strip_task_declarations(text: str) -> str:
+    """去掉注释形式的 cron / name 声明行。"""
+    return "\n".join(
+        line for line in text.splitlines()
+        if not _CRON_DECL_RE.match(line) and not _NAME_DECL_RE.match(line)
+    )
+
+
+def _declare_block(cron: str, name: str) -> str:
+    """生成文件头部的定时任务声明块；cron 为空则不声明。"""
+    if not cron:
+        return ""
+    lines = [f"# cron: {cron.strip()}"]
+    if name:
+        lines.append(f"# name: {name.strip()}")
+    return "".join(line + "\n" for line in lines)
+
+
+def build(output_path: str, cron: str = "", task_name: str = "") -> str:
+    # 声明块插在 coding 行之后、模块 docstring 之前，保证落在面板扫描的前若干行内
+    header_lines = HEADER.split("\n")
+    chunks = [
+        header_lines[0] + "\n",
+        _declare_block(cron, task_name),
+        "\n".join(header_lines[1:]),
+    ]
 
     # 1) 业务模块：剔除跨模块 import，全部符号落在同一命名空间
     for name in LOCAL_MODULES:
-        chunks.append(_banner(name) + strip_module_source(name, strip_imports=True))
+        chunks.append(_banner(name) + _strip_task_declarations(strip_module_source(name, strip_imports=True)))
 
     # 2) 兼容层：注册子模块别名，供入口模块的 import 与 `lynkco_common.X` 使用
     aliases = list(LOCAL_MODULES) + [ENTRY_MODULE]
@@ -156,7 +196,7 @@ def build(output_path: str) -> str:
     chunks.append(ALIAS_BLOCK.format(alias_list=repr(tuple(aliases)), alias_assignments=alias_assignments))
 
     # 3) 青龙入口模块：保留其 import（由上面的 sys.modules 别名满足）
-    chunks.append(_banner(ENTRY_MODULE) + strip_module_source(ENTRY_MODULE, strip_imports=False))
+    chunks.append(_banner(ENTRY_MODULE) + _strip_task_declarations(strip_module_source(ENTRY_MODULE, strip_imports=False)))
 
     # 4) 统一入口
     chunks.append(RUNNER_FOOTER)
@@ -172,9 +212,14 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="生成青龙面板单文件版脚本")
     parser.add_argument("-o", "--output", default=os.path.join(REPO_ROOT, "qinglong", "lynkco_qinglong_single.py"),
                         help="输出文件路径，默认 qinglong/lynkco_qinglong_single.py")
+    parser.add_argument("--cron", default="",
+                        help="在文件头部写入定时任务声明（如 '8 8 * * *'），面板拉库时据此自动建任务；"
+                             "默认不写，避免与多模块版 lynkco_qinglong.py 重复建任务")
+    parser.add_argument("--name", default="领克·每日签到分享",
+                        help="配合 --cron 使用，指定自动建出来的任务名")
     args = parser.parse_args()
 
-    output = build(os.path.abspath(args.output))
+    output = build(os.path.abspath(args.output), cron=args.cron, task_name=args.name)
     # 语法校验：合并产物必须能被编译通过
     with open(output, "r", encoding="utf-8") as f:
         compile(f.read(), output, "exec")
